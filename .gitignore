@@ -1,0 +1,13 @@
+.idea/
+.temp/
+.temp
+.cache/
+.cache
+node_modules
+example/
+.DS_Store
+.dist
+.dist/
+dist
+dist/
+yarn-error.log
