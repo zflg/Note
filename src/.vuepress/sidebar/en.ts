@@ -25,6 +25,11 @@ export const enSidebar = sidebar({
           prefix: "day2/",
           link: "day2/",
         },
+        {
+          text: "Day 3",
+          prefix: "day3/",
+          link: "day3/",
+        },
       ]
     },
   ],

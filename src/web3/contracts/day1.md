@@ -80,9 +80,38 @@ contract Coin {
     }
 }
 ```
-####minter变量（address类型）
+#### minter变量（address类型）
 address类型的变量示一个160bit值并且不允许修改，适用于存储合约地址，或者示外部账户的公钥哈希。而public修饰会自动生成一个函数，并允许从合约外部访问这个值。
 ```solidity
 function minter() external view returns (address) { return minter; }
 ```
-####balances变量（mapping类型）
+#### balances变量（mapping类型）
+`mapping(address => uint) public balances;`也创建了一个mapping的类型将地址映射到unsigned integers。
+mapping可以看作一个key-to-value的hash表。而public同样暴露给外部账户一个函数
+```solidity
+function balances(address account) external view returns (uint) { return balances[account]; }
+```
+#### event事件
+`event Sent(address from, address to, uint amount);`声明了一个事件，一旦发出。则以太坊客户端就可以侦听这些事件。可以使用JS代码，web3.js创建Coin合约对象，任何外界用户都会调用balances上自动生成的函数：
+```javascript
+Coin.Sent().watch({}, '', function(error, result) {
+    if (!error) {
+        console.log("Coin transfer: " + result.args.amount +
+            " coins were sent from " + result.args.from +
+            " to " + result.args.to + ".");
+        console.log("Balances now:\n" +
+            "Sender: " + Coin.balances.call(result.args.from) +
+            "Receiver: " + Coin.balances.call(result.args.to));
+    }
+})
+```
+#### 构造函数
+`constructor() { minter = msg.sender; }`，在合约创建过程执行，之后无法调用。之后永久储存合同人的地址。其中`msg`（`tx`和`block`也是）是一个特殊全局变量，其中可以渠道访问区块链的属性。msg.sender始终都是当前（外部）函数调用的来源地之。
+#### mint函数
+根据之前的constructor函数，则该合约的创建者地址记录在了minter变量当中，调用mint其中`require(msg.sender == minter)`，表示当前mint函数的调用地址必须等于合约的创建地址。这里balances有个溢出的默认check算法，balances是unit的映射，如果unit值在操作中溢出`>2^256 -1`则也会回滚事务。这里的逻辑我理解相当于铸币。
+#### send函数
+首先，由于没有检查，所以所有人都可以调用这个方法（我理解是这是转调用者自己的钱给别人，当然所有人都可以调用这个方法）。但是check了需要send的amount是否大于当前调用者的余额，真则revert操作，`InsufficientBalance`相当于抛错。
+
+
+
+
