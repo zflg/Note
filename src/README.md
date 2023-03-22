@@ -14,10 +14,10 @@ actions:
     link: /guide/
 
 features:
-  - title: Markdown Enhance
-    icon: markdown
-    details: Add align, sup/sub script, footnote, tasklist, tex, flowchart, diagram, mark and presentation support in markdown
-    link: https://theme-hope.vuejs.press/guide/markdown/
+  - title: Web 3.0
+    icon: emmet
+    details: Solidity, Smart Contract, Blocks
+    link: /web3/
 
   - title: Slide page
     icon: slides
