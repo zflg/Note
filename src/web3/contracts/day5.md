@@ -309,5 +309,125 @@ contract C {
 ```
 写入`ptr.push(0x42)`将不会恢复，尽管事实上`ptr`不再引用`s`的有效元素。由于编译器假定未使用的存储始终为零，因此后续`s.push()`不会显式地将零写入存储，所以在`push()`之后`s`的最后一个元素将有长度`1`并且包含`0x42`作为其第一元素。
 
+注意，Solidity 不允许在存储中声明对值类型的引用。这类明确的悬空引用被限制在嵌套引用类型中。然而，当在元组赋值中使用复杂表达式时，悬空引用也会暂时发生：
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity >=0.8.0 <0.9.0;
+
+contract C {
+    uint[] s;
+    uint[] t;
+    constructor() {
+        // Push some initial values to the storage arrays.
+        s.push(0x07);
+        t.push(0x03);
+    }
+
+    function g() internal returns (uint[] storage) {
+        s.pop();
+        return t;
+    }
+
+    function f() public returns (uint[] memory) {
+        // The following will first evaluate ``s.push()`` to a reference to a new element
+        // at index 1. Afterwards, the call to ``g`` pops this new element, resulting in
+        // the left-most tuple element to become a dangling reference. The assignment still
+        // takes place and will write outside the data area of ``s``.
+        (s.push(), g()[0]) = (0x42, 0x17);
+        // A subsequent push to ``s`` will reveal the value written by the previous
+        // statement, i.e. the last element of ``s`` at the end of this function will have
+        // the value ``0x42``.
+        s.push();
+        return s;
+    }
+}
+```
+
+
+## 基本类型之间的转换
+
+### 隐式转换
+
+- `unit8`可以转化为`unit16`，`int8`可以转化`int256`。
+- `int8`不能转化为`uint256`
+
+```solidity
+uint8 y;
+uint16 z;
+uint32 x = y + z;
+```
+
+### 显式转换
+
+- 将整数转化为更小的类型截取左侧
+```solidity
+uint32 a = 0x12345678;
+uint16 b = uint16(a); // 此时 b 的值是 0x5678
+```
+- 将整数转换为更大的类型左侧填充
+```solidity
+uint16 a = 0x1234;
+uint32 b = uint32(a); // b 为 0x00001234 now
+```
+- 定长字节转换为更短的截取右侧
+```solidity
+bytes2 a = 0x1234;
+bytes1 b = bytes1(a); // b 为 0x12
+```
+- 定长字节转换为更长的右侧填充
+```solidity
+bytes2 a = 0x1234;
+bytes4 b = bytes4(a); // b 为 0x12340000
+```
+
+例：
+```solidity
+bytes2 a = 0x1234;
+uint32 b = uint16(a);           // b 为 0x00001234
+uint32 c = uint32(bytes4(a));   // c 为 0x12340000
+uint8 d = uint8(uint16(a));     // d 为 0x34
+uint8 e = uint8(bytes1(a));     // e 为 0x12
+```
+
+## 字面常量与基本类型的转换
+
+### 整型与字面常量转换
+
+十进制和十六进制字面常量可以隐式转换为任何足以表示它而不会截断的整数类型 ：
+```solidity
+uint8 a = 12; //  可行
+uint32 b = 1234; // 可行
+uint16 c = 0x123456; // 失败, 会截断为 0x3456
+```
+
+### 定长字节数组与字面常量转换
+
+- 10进制不能隐式转换为定长字节数组，16进制可以
+- 大小必须完全符合定长字节数组
+
+```solidity
+bytes2 a = 54321; // 不可行
+bytes2 b = 0x12; // 不可行
+bytes2 c = 0x123; // 不可行
+bytes2 d = 0x1234; // 可行
+bytes2 e = 0x0012; // 可行
+bytes4 f = 0; // 可行
+bytes4 g = 0x0; // 可行
+
+
+bytes2 a = hex"1234"; // 可行
+bytes2 b = "xy"; // 可行
+bytes2 c = hex"12"; // 不可行
+bytes2 d = hex"123"; // n不可行
+bytes2 e = "x"; // 不可行
+bytes2 f = "xyz"; // 不可行
+```
+
+### 地址类型
+
+- `bytes20`和`unit160`可以显式转换为`address payable`类型
+- 一个地址`address a`可以通过`payable(a)`转换为`address payable`类型
+
+
 
 
